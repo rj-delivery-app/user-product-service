@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuthService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">user-product-service</a> &gt; <a href="index.source.html" class="el_package">com.example.userproduct.service</a> &gt; <span class="el_source">AuthService.java</span></div><h1>AuthService.java</h1><pre class="source lang-java linenums">package com.example.userproduct.service;
+
+import com.example.userproduct.aop.PublishKafkaEvent;
+import com.example.userproduct.dao.UserRepository;
+import com.example.userproduct.dto.AuthResponse;
+import com.example.userproduct.dto.LoginRequest;
+import com.example.userproduct.dto.RegisterRequest;
+import com.example.userproduct.entities.User;
+import com.example.userproduct.security.CustomUserDetailsService;
+import com.example.userproduct.security.JwtUtil;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * Service for authentication operations.
+ *
+ * Why: Handles user registration and login, enriching JWT tokens with userId, role,
+ *      and name claims for downstream service authorization. Kafka USER_CREATED events
+ *      are published declaratively via @PublishKafkaEvent handled by KafkaEventAspect.
+ * What: Registers new users with BCrypt-encoded passwords, authenticates credentials,
+ *       and generates enriched JWT tokens.
+ * Test: Mock UserRepository and JwtUtil; verify token claims include userId, role, and name.
+ */
+@Service
+@RequiredArgsConstructor
+public class AuthService {
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtUtil jwtUtil;
+    private final AuthenticationManager authenticationManager;
+    private final CustomUserDetailsService userDetailsService;
+
+    /**
+     * Register a new user
+     */
+    @Transactional
+    @PublishKafkaEvent(eventType = &quot;USER_CREATED&quot;, topic = &quot;user&quot;)
+    public AuthResponse register(RegisterRequest request) {
+        // Check if email already exists
+<span class="fc bfc" id="L50" title="All 2 branches covered.">        if (userRepository.existsByEmail(request.getEmail())) {</span>
+<span class="fc" id="L51">            throw new IllegalArgumentException(&quot;Email already registered&quot;);</span>
+        }
+
+        // Create new user
+<span class="fc" id="L55">        User user = User.builder()</span>
+<span class="fc" id="L56">                .name(request.getName())</span>
+<span class="fc" id="L57">                .email(request.getEmail())</span>
+<span class="fc" id="L58">                .password(passwordEncoder.encode(request.getPassword()))</span>
+<span class="fc" id="L59">                .phone(request.getPhone())</span>
+<span class="fc" id="L60">                .role(request.getRole())</span>
+<span class="fc" id="L61">                .gender(request.getGender())</span>
+<span class="fc" id="L62">                .age(request.getAge())</span>
+<span class="fc" id="L63">                .isActive(true)</span>
+<span class="fc" id="L64">                .build();</span>
+
+<span class="fc" id="L66">        user = userRepository.save(user);</span>
+
+        // Generate enriched JWT token with userId, role, and name claims
+<span class="fc" id="L69">        UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());</span>
+<span class="fc" id="L70">        Map&lt;String, Object&gt; extraClaims = buildEnrichedClaims(user);</span>
+<span class="fc" id="L71">        String token = jwtUtil.generateToken(extraClaims, userDetails);</span>
+
+<span class="fc" id="L73">        return AuthResponse.builder()</span>
+<span class="fc" id="L74">                .token(token)</span>
+<span class="fc" id="L75">                .userId(user.getId())</span>
+<span class="fc" id="L76">                .email(user.getEmail())</span>
+<span class="fc" id="L77">                .name(user.getName())</span>
+<span class="fc" id="L78">                .role(user.getRole().name())</span>
+<span class="fc" id="L79">                .build();</span>
+    }
+
+    /**
+     * Authenticate user and generate token
+     */
+    @Transactional(readOnly = true)
+    public AuthResponse login(LoginRequest request) {
+        // Authenticate credentials
+<span class="fc" id="L88">        authenticationManager.authenticate(</span>
+                new UsernamePasswordAuthenticationToken(
+<span class="fc" id="L90">                        request.getEmail(),</span>
+<span class="fc" id="L91">                        request.getPassword()</span>
+                )
+        );
+
+        // Get user details
+<span class="fc" id="L96">        User user = userRepository.findByEmail(request.getEmail())</span>
+<span class="pc" id="L97">                .orElseThrow(() -&gt; new UsernameNotFoundException(&quot;User not found&quot;));</span>
+
+        // Generate enriched JWT token with userId, role, and name claims
+<span class="fc" id="L100">        UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());</span>
+<span class="fc" id="L101">        Map&lt;String, Object&gt; extraClaims = buildEnrichedClaims(user);</span>
+<span class="fc" id="L102">        String token = jwtUtil.generateToken(extraClaims, userDetails);</span>
+
+<span class="fc" id="L104">        return AuthResponse.builder()</span>
+<span class="fc" id="L105">                .token(token)</span>
+<span class="fc" id="L106">                .userId(user.getId())</span>
+<span class="fc" id="L107">                .email(user.getEmail())</span>
+<span class="fc" id="L108">                .name(user.getName())</span>
+<span class="fc" id="L109">                .role(user.getRole().name())</span>
+<span class="fc" id="L110">                .build();</span>
+    }
+
+    /**
+     * Build enriched JWT claims with userId, role, and name.
+     *
+     * Why: Downstream services can extract user identity from the JWT without
+     *      making additional calls to the user-product-service.
+     */
+    private Map&lt;String, Object&gt; buildEnrichedClaims(User user) {
+<span class="fc" id="L120">        Map&lt;String, Object&gt; claims = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L121">        claims.put(&quot;userId&quot;, user.getId());</span>
+<span class="fc" id="L122">        claims.put(&quot;role&quot;, user.getRole().name());</span>
+<span class="fc" id="L123">        claims.put(&quot;name&quot;, user.getName());</span>
+<span class="fc" id="L124">        return claims;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

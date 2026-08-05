@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AddressController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">user-product-service</a> &gt; <a href="index.source.html" class="el_package">com.example.userproduct.controller</a> &gt; <span class="el_source">AddressController.java</span></div><h1>AddressController.java</h1><pre class="source lang-java linenums">package com.example.userproduct.controller;
+
+import com.example.userproduct.dto.AddressRequest;
+import com.example.userproduct.dto.AddressResponse;
+import com.example.userproduct.service.AddressService;
+import com.example.userproduct.service.UserContextService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+/**
+ * Controller for address management endpoints
+ */
+@RestController
+@RequestMapping(&quot;/api/users/addresses&quot;)
+@RequiredArgsConstructor
+@SecurityRequirement(name = &quot;bearerAuth&quot;)
+@Tag(name = &quot;Addresses&quot;, description = &quot;User address management endpoints&quot;)
+public class AddressController {
+
+    private final AddressService addressService;
+    private final UserContextService userContextService;
+
+    @GetMapping
+    @Operation(summary = &quot;Get current user's addresses&quot;,
+        description = &quot;Get all addresses for the currently authenticated user&quot;)
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Addresses retrieved successfully&quot;,
+            content = @Content(array = @ArraySchema(schema = @Schema(implementation = AddressResponse.class)))),
+        @ApiResponse(responseCode = &quot;401&quot;, description = &quot;Unauthorized&quot;)
+    })
+    public ResponseEntity&lt;List&lt;AddressResponse&gt;&gt; getMyAddresses() {
+<span class="fc" id="L46">        String userId = userContextService.getCurrentUserId();</span>
+<span class="fc" id="L47">        List&lt;AddressResponse&gt; response = addressService.getUserAddresses(userId);</span>
+<span class="fc" id="L48">        return ResponseEntity.ok(response);</span>
+    }
+
+    @GetMapping(&quot;/{id}&quot;)
+    @Operation(summary = &quot;Get address by ID&quot;,
+        description = &quot;Get a specific address by ID. Only the owner can access their addresses.&quot;)
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Address found&quot;,
+            content = @Content(schema = @Schema(implementation = AddressResponse.class))),
+        @ApiResponse(responseCode = &quot;404&quot;, description = &quot;Address not found&quot;)
+    })
+    public ResponseEntity&lt;AddressResponse&gt; getAddress(
+            @Parameter(description = &quot;Address ID&quot;, required = true) @PathVariable String id) {
+<span class="fc" id="L61">        String userId = userContextService.getCurrentUserId();</span>
+<span class="fc" id="L62">        AddressResponse response = addressService.getAddress(id, userId);</span>
+<span class="fc" id="L63">        return ResponseEntity.ok(response);</span>
+    }
+
+    @PostMapping
+    @Operation(summary = &quot;Add new address&quot;,
+        description = &quot;Add a new address for the currently authenticated user&quot;)
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = &quot;201&quot;, description = &quot;Address created successfully&quot;,
+            content = @Content(schema = @Schema(implementation = AddressResponse.class))),
+        @ApiResponse(responseCode = &quot;400&quot;, description = &quot;Invalid request data&quot;)
+    })
+    public ResponseEntity&lt;AddressResponse&gt; createAddress(@Valid @RequestBody AddressRequest request) {
+<span class="fc" id="L75">        String userId = userContextService.getCurrentUserId();</span>
+<span class="fc" id="L76">        AddressResponse response = addressService.createAddress(userId, request);</span>
+<span class="fc" id="L77">        return ResponseEntity.status(HttpStatus.CREATED).body(response);</span>
+    }
+
+    @PutMapping(&quot;/{id}&quot;)
+    @Operation(summary = &quot;Update address&quot;,
+        description = &quot;Update an existing address. Only the owner can update their addresses.&quot;)
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Address updated successfully&quot;,
+            content = @Content(schema = @Schema(implementation = AddressResponse.class))),
+        @ApiResponse(responseCode = &quot;400&quot;, description = &quot;Invalid request data&quot;),
+        @ApiResponse(responseCode = &quot;404&quot;, description = &quot;Address not found&quot;)
+    })
+    public ResponseEntity&lt;AddressResponse&gt; updateAddress(
+            @Parameter(description = &quot;Address ID&quot;, required = true) @PathVariable String id,
+            @Valid @RequestBody AddressRequest request) {
+<span class="fc" id="L92">        String userId = userContextService.getCurrentUserId();</span>
+<span class="fc" id="L93">        AddressResponse response = addressService.updateAddress(id, userId, request);</span>
+<span class="fc" id="L94">        return ResponseEntity.ok(response);</span>
+    }
+
+    @DeleteMapping(&quot;/{id}&quot;)
+    @Operation(summary = &quot;Delete address&quot;,
+        description = &quot;Delete an address. Only the owner can delete their addresses.&quot;)
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = &quot;204&quot;, description = &quot;Address deleted successfully&quot;),
+        @ApiResponse(responseCode = &quot;404&quot;, description = &quot;Address not found&quot;)
+    })
+    public ResponseEntity&lt;Void&gt; deleteAddress(
+            @Parameter(description = &quot;Address ID&quot;, required = true) @PathVariable String id) {
+<span class="fc" id="L106">        String userId = userContextService.getCurrentUserId();</span>
+<span class="fc" id="L107">        addressService.deleteAddress(id, userId);</span>
+<span class="fc" id="L108">        return ResponseEntity.noContent().build();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

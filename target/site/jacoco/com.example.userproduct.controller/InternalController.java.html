@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>InternalController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">user-product-service</a> &gt; <a href="index.source.html" class="el_package">com.example.userproduct.controller</a> &gt; <span class="el_source">InternalController.java</span></div><h1>InternalController.java</h1><pre class="source lang-java linenums">package com.example.userproduct.controller;
+
+import com.example.userproduct.dao.AddressRepository;
+import com.example.userproduct.dao.ProductRepository;
+import com.example.userproduct.dao.UserRepository;
+import com.example.userproduct.dto.AddressInternalResponse;
+import com.example.userproduct.dto.ProductInternalResponse;
+import com.example.userproduct.dto.UserInternalResponse;
+import com.example.userproduct.entities.Address;
+import com.example.userproduct.entities.Product;
+import com.example.userproduct.entities.User;
+import com.example.userproduct.entities.UserRole;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+/**
+ * Why: Provides internal service-to-service endpoints that bypass JWT authentication,
+ *      allowing the order-service and delivery-service to look up user, product, and
+ *      address data without a user token.
+ * What: Exposes lightweight GET endpoints under /internal/** for user, address, product,
+ *       and batch product lookups.
+ * Test: Call /internal/users/{id} without auth and assert 200 with correct JSON fields.
+ */
+@RestController
+@RequestMapping(&quot;/api/internal&quot;)
+@RequiredArgsConstructor
+public class InternalController {
+
+    private final UserRepository userRepository;
+    private final ProductRepository productRepository;
+    private final AddressRepository addressRepository;
+
+    /**
+     * Get user by ID for internal service-to-service calls.
+     */
+    @GetMapping(&quot;/users/{id}&quot;)
+    public ResponseEntity&lt;UserInternalResponse&gt; getUserById(@PathVariable String id) {
+<span class="fc" id="L42">        User user = userRepository.findById(id)</span>
+<span class="pc" id="L43">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;User not found&quot;));</span>
+
+<span class="fc" id="L45">        UserInternalResponse response = UserInternalResponse.builder()</span>
+<span class="fc" id="L46">                .id(user.getId())</span>
+<span class="fc" id="L47">                .name(user.getName())</span>
+<span class="fc" id="L48">                .email(user.getEmail())</span>
+<span class="fc" id="L49">                .role(user.getRole().name())</span>
+<span class="fc" id="L50">                .isActive(user.getIsActive())</span>
+<span class="fc" id="L51">                .build();</span>
+
+<span class="fc" id="L53">        return ResponseEntity.ok(response);</span>
+    }
+
+    /**
+     * Get a specific address for a user (internal service-to-service).
+     */
+    @GetMapping(&quot;/users/{userId}/addresses/{addressId}&quot;)
+    public ResponseEntity&lt;AddressInternalResponse&gt; getUserAddress(
+            @PathVariable String userId,
+            @PathVariable String addressId) {
+<span class="fc" id="L63">        Address address = addressRepository.findByIdAndUserId(addressId, userId)</span>
+<span class="pc" id="L64">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Address not found&quot;));</span>
+
+<span class="fc" id="L66">        AddressInternalResponse response = AddressInternalResponse.builder()</span>
+<span class="fc" id="L67">                .id(address.getId())</span>
+<span class="fc" id="L68">                .street(address.getStreet())</span>
+<span class="fc" id="L69">                .city(address.getCity())</span>
+<span class="fc" id="L70">                .state(address.getState())</span>
+<span class="fc" id="L71">                .zipCode(address.getZipCode())</span>
+<span class="fc" id="L72">                .type(address.getAddressType().name())</span>
+<span class="fc" id="L73">                .build();</span>
+
+<span class="fc" id="L75">        return ResponseEntity.ok(response);</span>
+    }
+
+    /**
+     * Get all active delivery riders for internal service-to-service calls.
+     */
+    @GetMapping(&quot;/riders&quot;)
+    public ResponseEntity&lt;List&lt;UserInternalResponse&gt;&gt; getActiveRiders() {
+<span class="nc" id="L83">        List&lt;User&gt; riders = userRepository.findByRoleAndIsActiveTrue(UserRole.DELIVERY_RIDER);</span>
+<span class="nc" id="L84">        return ResponseEntity.ok(riders.stream().map(this::mapUserToInternal).toList());</span>
+    }
+
+    /**
+     * Get product by ID for internal service-to-service calls.
+     */
+    @GetMapping(&quot;/products/{id}&quot;)
+    public ResponseEntity&lt;ProductInternalResponse&gt; getProductById(@PathVariable String id) {
+<span class="fc" id="L92">        Product product = productRepository.findById(id)</span>
+<span class="pc" id="L93">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Product not found&quot;));</span>
+
+<span class="fc" id="L95">        ProductInternalResponse response = mapProductToInternal(product);</span>
+
+<span class="fc" id="L97">        return ResponseEntity.ok(response);</span>
+    }
+
+    /**
+     * Get multiple products by IDs for internal service-to-service calls (batch lookup).
+     */
+    @GetMapping(&quot;/products/batch&quot;)
+    public ResponseEntity&lt;List&lt;ProductInternalResponse&gt;&gt; getProductsByIds(
+            @RequestParam List&lt;String&gt; ids) {
+<span class="fc" id="L106">        List&lt;ProductInternalResponse&gt; responses = productRepository.findAllById(ids).stream()</span>
+<span class="fc" id="L107">                .map(this::mapProductToInternal)</span>
+<span class="fc" id="L108">                .collect(Collectors.toList());</span>
+
+<span class="fc" id="L110">        return ResponseEntity.ok(responses);</span>
+    }
+
+    private UserInternalResponse mapUserToInternal(User user) {
+<span class="nc" id="L114">        return UserInternalResponse.builder()</span>
+<span class="nc" id="L115">                .id(user.getId())</span>
+<span class="nc" id="L116">                .name(user.getName())</span>
+<span class="nc" id="L117">                .email(user.getEmail())</span>
+<span class="nc" id="L118">                .role(user.getRole().name())</span>
+<span class="nc" id="L119">                .isActive(user.getIsActive())</span>
+<span class="nc" id="L120">                .build();</span>
+    }
+
+    private ProductInternalResponse mapProductToInternal(Product product) {
+<span class="fc" id="L124">        return ProductInternalResponse.builder()</span>
+<span class="fc" id="L125">                .id(product.getId())</span>
+<span class="fc" id="L126">                .merchantId(product.getMerchant().getId())</span>
+<span class="fc" id="L127">                .name(product.getName())</span>
+<span class="fc" id="L128">                .price(product.getPrice())</span>
+<span class="fc" id="L129">                .isAvailable(product.getIsAvailable())</span>
+<span class="fc" id="L130">                .build();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

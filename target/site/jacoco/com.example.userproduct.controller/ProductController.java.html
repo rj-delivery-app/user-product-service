@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ProductController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">user-product-service</a> &gt; <a href="index.source.html" class="el_package">com.example.userproduct.controller</a> &gt; <span class="el_source">ProductController.java</span></div><h1>ProductController.java</h1><pre class="source lang-java linenums">package com.example.userproduct.controller;
+
+import com.example.userproduct.dto.CreateProductRequest;
+import com.example.userproduct.dto.ProductResponse;
+import com.example.userproduct.dto.UpdateProductRequest;
+import com.example.userproduct.service.ProductService;
+import com.example.userproduct.service.UserContextService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+/**
+ * Controller for product management endpoints
+ */
+@RestController
+@RequestMapping(&quot;/api/products&quot;)
+@RequiredArgsConstructor
+@SecurityRequirement(name = &quot;bearerAuth&quot;)
+@Tag(name = &quot;Products&quot;, description = &quot;Product management endpoints&quot;)
+public class ProductController {
+
+    private final ProductService productService;
+    private final UserContextService userContextService;
+
+    @PostMapping
+    @PreAuthorize(&quot;hasRole('MERCHANT_ADMIN')&quot;)
+    @Operation(summary = &quot;Create product&quot;, description = &quot;Create a new product. Requires MERCHANT_ADMIN role.&quot;)
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = &quot;201&quot;, description = &quot;Product created successfully&quot;,
+            content = @Content(schema = @Schema(implementation = ProductResponse.class))),
+        @ApiResponse(responseCode = &quot;400&quot;, description = &quot;Invalid request data&quot;),
+        @ApiResponse(responseCode = &quot;403&quot;, description = &quot;Forbidden&quot;)
+    })
+    public ResponseEntity&lt;ProductResponse&gt; createProduct(@Valid @RequestBody CreateProductRequest request) {
+<span class="fc" id="L48">        String merchantId = userContextService.getCurrentUserId();</span>
+<span class="fc" id="L49">        ProductResponse response = productService.createProduct(merchantId, request);</span>
+<span class="fc" id="L50">        return ResponseEntity.status(HttpStatus.CREATED).body(response);</span>
+    }
+
+    @PutMapping(&quot;/{id}&quot;)
+    @PreAuthorize(&quot;hasRole('MERCHANT_ADMIN')&quot;)
+    @Operation(summary = &quot;Update product&quot;, description = &quot;Update an existing product. Only the owner merchant can update.&quot;)
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Product updated successfully&quot;,
+            content = @Content(schema = @Schema(implementation = ProductResponse.class))),
+        @ApiResponse(responseCode = &quot;400&quot;, description = &quot;Invalid request data&quot;),
+        @ApiResponse(responseCode = &quot;403&quot;, description = &quot;Forbidden&quot;),
+        @ApiResponse(responseCode = &quot;404&quot;, description = &quot;Product not found&quot;)
+    })
+    public ResponseEntity&lt;ProductResponse&gt; updateProduct(
+            @Parameter(description = &quot;Product ID&quot;, required = true) @PathVariable String id,
+            @Valid @RequestBody UpdateProductRequest request) {
+<span class="fc" id="L66">        String merchantId = userContextService.getCurrentUserId();</span>
+<span class="fc" id="L67">        ProductResponse response = productService.updateProduct(id, merchantId, request);</span>
+<span class="fc" id="L68">        return ResponseEntity.ok(response);</span>
+    }
+
+    @DeleteMapping(&quot;/{id}&quot;)
+    @PreAuthorize(&quot;hasRole('MERCHANT_ADMIN')&quot;)
+    @Operation(summary = &quot;Delete product&quot;, description = &quot;Delete a product. Only the owner merchant can delete.&quot;)
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = &quot;204&quot;, description = &quot;Product deleted successfully&quot;),
+        @ApiResponse(responseCode = &quot;403&quot;, description = &quot;Forbidden&quot;),
+        @ApiResponse(responseCode = &quot;404&quot;, description = &quot;Product not found&quot;)
+    })
+    public ResponseEntity&lt;Void&gt; deleteProduct(
+            @Parameter(description = &quot;Product ID&quot;, required = true) @PathVariable String id) {
+<span class="fc" id="L81">        String merchantId = userContextService.getCurrentUserId();</span>
+<span class="fc" id="L82">        productService.deleteProduct(id, merchantId);</span>
+<span class="fc" id="L83">        return ResponseEntity.noContent().build();</span>
+    }
+
+    @GetMapping(&quot;/{id}&quot;)
+    @Operation(summary = &quot;Get product by ID&quot;, description = &quot;Get product details by ID&quot;)
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Product found&quot;,
+            content = @Content(schema = @Schema(implementation = ProductResponse.class))),
+        @ApiResponse(responseCode = &quot;404&quot;, description = &quot;Product not found&quot;)
+    })
+    public ResponseEntity&lt;ProductResponse&gt; getProduct(
+            @Parameter(description = &quot;Product ID&quot;, required = true) @PathVariable String id) {
+<span class="fc" id="L95">        ProductResponse response = productService.getProduct(id);</span>
+<span class="fc" id="L96">        return ResponseEntity.ok(response);</span>
+    }
+
+    @GetMapping
+    @Operation(summary = &quot;List all products&quot;, description = &quot;List all available products with pagination&quot;)
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Products retrieved successfully&quot;)
+    })
+    public ResponseEntity&lt;Page&lt;ProductResponse&gt;&gt; getAllProducts(Pageable pageable) {
+<span class="fc" id="L105">        Page&lt;ProductResponse&gt; response = productService.getAllProducts(pageable);</span>
+<span class="fc" id="L106">        return ResponseEntity.ok(response);</span>
+    }
+
+    @GetMapping(&quot;/merchant/{merchantId}&quot;)
+    @Operation(summary = &quot;Get products by merchant&quot;, description = &quot;Get all products for a specific merchant with pagination&quot;)
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Products retrieved successfully&quot;)
+    })
+    public ResponseEntity&lt;Page&lt;ProductResponse&gt;&gt; getProductsByMerchant(
+            @Parameter(description = &quot;Merchant ID&quot;, required = true) @PathVariable String merchantId,
+            Pageable pageable) {
+<span class="fc" id="L117">        Page&lt;ProductResponse&gt; response = productService.getProductsByMerchant(merchantId, pageable);</span>
+<span class="fc" id="L118">        return ResponseEntity.ok(response);</span>
+    }
+
+    @GetMapping(&quot;/category/{category}&quot;)
+    @Operation(summary = &quot;Get products by category&quot;, description = &quot;Get all products in a specific category with pagination&quot;)
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Products retrieved successfully&quot;)
+    })
+    public ResponseEntity&lt;Page&lt;ProductResponse&gt;&gt; getProductsByCategory(
+            @Parameter(description = &quot;Category name&quot;, required = true) @PathVariable String category,
+            Pageable pageable) {
+<span class="fc" id="L129">        Page&lt;ProductResponse&gt; response = productService.getProductsByCategory(category, pageable);</span>
+<span class="fc" id="L130">        return ResponseEntity.ok(response);</span>
+    }
+
+    @PatchMapping(&quot;/{id}/availability&quot;)
+    @PreAuthorize(&quot;hasRole('MERCHANT_ADMIN')&quot;)
+    @Operation(summary = &quot;Toggle product availability&quot;,
+        description = &quot;Toggle a product's availability status. Only the owner merchant can toggle.&quot;)
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Product availability toggled&quot;,
+            content = @Content(schema = @Schema(implementation = ProductResponse.class))),
+        @ApiResponse(responseCode = &quot;403&quot;, description = &quot;Forbidden&quot;),
+        @ApiResponse(responseCode = &quot;404&quot;, description = &quot;Product not found&quot;)
+    })
+    public ResponseEntity&lt;ProductResponse&gt; toggleAvailability(
+            @Parameter(description = &quot;Product ID&quot;, required = true) @PathVariable String id) {
+<span class="fc" id="L145">        String merchantId = userContextService.getCurrentUserId();</span>
+<span class="fc" id="L146">        ProductResponse response = productService.toggleAvailability(id, merchantId);</span>
+<span class="fc" id="L147">        return ResponseEntity.ok(response);</span>
+    }
+
+    @GetMapping(&quot;/search&quot;)
+    @Operation(summary = &quot;Search products&quot;, description = &quot;Search products by name or description (case-insensitive)&quot;)
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Search results retrieved successfully&quot;)
+    })
+    public ResponseEntity&lt;Page&lt;ProductResponse&gt;&gt; searchProducts(
+            @Parameter(description = &quot;Search query&quot;, required = true) @RequestParam String query,
+            Pageable pageable) {
+<span class="fc" id="L158">        Page&lt;ProductResponse&gt; response = productService.searchProducts(query, pageable);</span>
+<span class="fc" id="L159">        return ResponseEntity.ok(response);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
