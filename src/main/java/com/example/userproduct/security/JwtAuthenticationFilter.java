@@ -36,6 +36,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final String jwt;
         final String userEmail;
 
+        final String path = request.getRequestURI();
+
+        // Allow Vite's asset folder and the favicon to bypass JWT processing entirely
+        if (path.equals("/") || path.equals("/index.html") || path.startsWith("/assets/")
+                || path.equals("/favicon.svg") || path.endsWith(".json")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         // Check if Authorization header is present and starts with "Bearer "
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);

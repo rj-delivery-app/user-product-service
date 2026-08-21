@@ -4,6 +4,7 @@ import com.example.userproduct.aop.PublishKafkaEvent;
 import com.example.userproduct.dao.ProductRepository;
 import com.example.userproduct.dao.UserRepository;
 import com.example.userproduct.dto.CreateProductRequest;
+import com.example.userproduct.dto.ImageHolder;
 import com.example.userproduct.dto.ProductResponse;
 import com.example.userproduct.dto.UpdateProductRequest;
 import com.example.userproduct.entities.Product;
@@ -33,6 +34,7 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
+    private final ImageHolder imageHolder;
 
     /**
      * Create a new product (merchant only)
@@ -52,7 +54,7 @@ public class ProductService {
                 .name(request.getName())
                 .description(request.getDescription())
                 .price(request.getPrice())
-                .imageUrl(request.getImageUrl())
+                .imageUrl(imageHolder.getOriginalFileName())
                 .category(request.getCategory())
                 .isAvailable(true)
                 .build();

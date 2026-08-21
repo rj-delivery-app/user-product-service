@@ -1,5 +1,7 @@
 package com.example.userproduct.security;
 
+import jakarta.servlet.DispatcherType;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,13 +14,17 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.SessionManagementConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -28,7 +34,7 @@ import java.util.List;
 /**
  * Security configuration for JWT-based authentication.
  * <p>
- * Why: Centralises JWT auth, CORS, and CSRF settings so all API routes are
+ * Why: Centralizes JWT auth, CORS, and CSRF settings so all API routes are
  * protected consistently while internal endpoints remain accessible.
  * What: Disables CSRF (stateless JWT), enables CORS, permits public and internal routes,
  * and attaches the JWT filter before the default auth filter.
@@ -46,12 +52,31 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf
-                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(AbstractHttpConfigurer::disable // disabled csrf as using jwt
+//                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+//                        .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+//                        .ignoringRequestMatchers("/api/auth/logout")
+                )
+                .cors(cors -> cors
+                        .configurationSource(corsConfigurationSource())
+                )
                 .authorizeHttpRequests(auth -> auth
+                        .dispatcherTypeMatchers(DispatcherType.FORWARD).permitAll()
                         // Allow CORS preflight requests without authentication
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // paths for static content (UI pages in static folder)
+                        .requestMatchers(
+                                "/",
+                                "/index.html",
+                                "/static/**",
+                                "/assets/**",
+                                "/files/**",
+                                "/*.js",
+                                "/*.css",
+                                "/*.json",
+                                "/*.svg",
+                                "/favicon.ico"
+                        ).permitAll()
                         // Public endpoints
                         .requestMatchers(
                                 "/api/auth/**",
@@ -67,13 +92,28 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                        .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+                        .sessionFixation(SessionManagementConfigurer.SessionFixationConfigurer::none)
+                )
+                .securityContext(context -> context
+                        .securityContextRepository(new HttpSessionSecurityContextRepository())
                 )
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
                 )
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .logout(logout -> logout
+                        .logoutUrl("/api/auth/logout")
+                        .invalidateHttpSession(true)
+                        .deleteCookies("JSESSIONID")
+                        .logoutSuccessHandler((request, response, authentication) -> {
+                            response.setStatus(HttpServletResponse.SC_OK);
+                            response.setContentType("application/json");
+                            response.getWriter().write("{\"message\": \"Logged out successfully\"}");
+                        })
+
+                );
 
         return http.build();
     }
@@ -83,7 +123,7 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOriginPatterns(List.of("*"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Cache-Control"));
         config.setExposedHeaders(List.of("Authorization"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);

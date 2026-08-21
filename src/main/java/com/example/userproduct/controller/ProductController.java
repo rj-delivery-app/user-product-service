@@ -1,8 +1,10 @@
 package com.example.userproduct.controller;
 
 import com.example.userproduct.dto.CreateProductRequest;
+import com.example.userproduct.dto.ImageHolder;
 import com.example.userproduct.dto.ProductResponse;
 import com.example.userproduct.dto.UpdateProductRequest;
+import com.example.userproduct.service.FileService;
 import com.example.userproduct.service.ProductService;
 import com.example.userproduct.service.UserContextService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,18 +15,28 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.io.IOException;
 
 /**
  * Controller for product management endpoints
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/products")
 @RequiredArgsConstructor
@@ -34,6 +46,8 @@ public class ProductController {
 
     private final ProductService productService;
     private final UserContextService userContextService;
+    private final ImageHolder imageHolder;
+    private final FileService fileService;
 
     @PostMapping
     @PreAuthorize("hasRole('MERCHANT_ADMIN')")
@@ -45,6 +59,9 @@ public class ProductController {
         @ApiResponse(responseCode = "403", description = "Forbidden")
     })
     public ResponseEntity<ProductResponse> createProduct(@Valid @RequestBody CreateProductRequest request) {
+        if (imageHolder == null || imageHolder.getFileBytes() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image file is empty from controller");
+        }
         String merchantId = userContextService.getCurrentUserId();
         ProductResponse response = productService.createProduct(merchantId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -157,5 +174,50 @@ public class ProductController {
             Pageable pageable) {
         Page<ProductResponse> response = productService.searchProducts(query, pageable);
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping(value = "/upload", consumes = {"multipart/form-data"})
+    @Operation(summary = "upload products image", description = "image")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "upload")
+    })
+    public ResponseEntity<String> uploadImage(
+            @RequestParam("image") MultipartFile file,
+            @RequestParam("productName") String productName
+    ) {
+        try {
+            imageHolder.setContentType(file.getContentType());
+            imageHolder.setOriginalFileName(file.getOriginalFilename());
+            imageHolder.setFileBytes(file.getBytes());
+            fileService.saveFile(file);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        log.info("Uploading image to file: {}: {}", file.isEmpty(), file.getOriginalFilename());
+        return ResponseEntity.ok(imageHolder.getOriginalFileName());
+    }
+
+    @GetMapping("/download/{fileName:.+}")
+    public ResponseEntity<Resource> downloadFile(@PathVariable String fileName, HttpServletRequest request) {
+        // 1. Load the file asset via the service layer
+        Resource resource = fileService.loadFileAsResource(fileName);
+
+        // 2. Dynamically determine the file's content/media type
+        String contentType = null;
+        try {
+            contentType = request.getServletContext().getMimeType(resource.getFile().getAbsolutePath());
+        } catch (IOException ex) {
+            // Fallback to a generic binary stream if type cannot be detected
+            contentType = "application/octet-stream";
+        }
+        if (contentType == null) {
+            contentType = "application/octet-stream";
+        }
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(contentType))
+                // USE THIS FOR SAVING DIRECTLY TO DISK:
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
+                .body(resource);
     }
 }
