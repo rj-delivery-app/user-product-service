@@ -34,7 +34,9 @@ class JwtAuthenticationFilterTest {
     @Mock private FilterChain filterChain;
     @InjectMocks private JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    @BeforeEach void setUp() { SecurityContextHolder.clearContext(); }
+    @BeforeEach void setUp() {
+        SecurityContextHolder.clearContext();
+    }
     @AfterEach void tearDown() { SecurityContextHolder.clearContext(); }
 
     @Test @DisplayName("No Authorization header - no auth set")

@@ -25,6 +25,10 @@ public class SpaWebFilter implements Filter {
                 path.startsWith("/assets/") ||
                 path.startsWith("/files/") ||
                 path.equals("/favicon.svg") ||
+                path.equals("/favicon.ico") ||
+                path.startsWith("/actuator") ||
+                path.startsWith("/swagger-ui") ||
+                path.startsWith("/v3/") ||
                 STATIC_FILE_PATTERN.matcher(path).matches()) {
 
             chain.doFilter(request, response);

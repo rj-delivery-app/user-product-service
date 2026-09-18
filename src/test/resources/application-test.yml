@@ -18,3 +18,20 @@ spring:
 springdoc:
   api-docs:
     enabled: false
+
+
+# Expose the prometheus metric endpoint (/actuator/prometheus)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: metrics,prometheus
+  endpoint:
+    prometheus:
+      enabled: true
+
+  # Add common labels to your metrics for easier filtering in Grafana
+  metrics:
+    tags:
+      application: my-java-app
+

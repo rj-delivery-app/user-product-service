@@ -75,7 +75,7 @@ public class SecurityConfig {
                                 "/*.css",
                                 "/*.json",
                                 "/*.svg",
-                                "/favicon.ico"
+                                "/favicon.*"
                         ).permitAll()
                         // Public endpoints
                         .requestMatchers(

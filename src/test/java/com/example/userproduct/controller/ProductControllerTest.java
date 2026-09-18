@@ -1,11 +1,15 @@
 package com.example.userproduct.controller;
 
+import com.example.userproduct.dao.ProductRepository;
+import com.example.userproduct.dao.UserRepository;
 import com.example.userproduct.dto.CreateProductRequest;
+import com.example.userproduct.dto.ImageHolder;
 import com.example.userproduct.dto.ProductResponse;
 import com.example.userproduct.dto.UpdateProductRequest;
 import com.example.userproduct.security.CustomUserDetailsService;
 import com.example.userproduct.security.JwtUtil;
 import com.example.userproduct.security.SecurityConfig;
+import com.example.userproduct.service.FileService;
 import com.example.userproduct.service.ProductService;
 import com.example.userproduct.service.UserContextService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,6 +25,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
@@ -46,6 +51,8 @@ class ProductControllerTest {
     @MockBean private UserContextService userContextService;
     @MockBean private JwtUtil jwtUtil;
     @MockBean private CustomUserDetailsService customUserDetailsService;
+    @MockBean private ImageHolder imageHolder;
+    @MockBean private FileService fileService;
 
     private UsernamePasswordAuthenticationToken authAs(String role) {
         return new UsernamePasswordAuthenticationToken("user@example.com", null,
@@ -61,11 +68,13 @@ class ProductControllerTest {
     @Nested @DisplayName("POST /api/products") class CreateProductTests {
         @Test @DisplayName("MERCHANT_ADMIN creates product - 201")
         void createProduct_merchantAdmin_returns201() throws Exception {
+            MockHttpSession session = new MockHttpSession();
             CreateProductRequest request = CreateProductRequest.builder().name("Margherita Pizza")
                     .description("Classic pizza").price(new BigDecimal("12.99")).category("Pizza").build();
             when(userContextService.getCurrentUserId()).thenReturn("merchant-1");
             when(productService.createProduct(eq("merchant-1"), any(CreateProductRequest.class))).thenReturn(buildSampleProduct());
             mockMvc.perform(post("/api/products").with(authentication(authAs("MERCHANT_ADMIN")))
+                            .session(session)
                             .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isCreated()).andExpect(jsonPath("$.id").value("prod-1"));
         }
