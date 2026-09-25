@@ -40,7 +40,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // Allow Vite's asset folder and the favicon to bypass JWT processing entirely
         if (path!=null && (path.equals("/") || path.equals("/index.html") || path.startsWith("/assets/")
-                || path.equals("/favicon.svg") || path.endsWith(".json"))) {
+                || path.equals("/favicon.ico") || path.endsWith(".json"))) {
             filterChain.doFilter(request, response);
             return;
         }

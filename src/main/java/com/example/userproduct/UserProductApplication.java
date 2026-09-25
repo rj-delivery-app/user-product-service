@@ -18,6 +18,5 @@ public class UserProductApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(UserProductApplication.class, args);
-        log.info("User Product Service started successfully!");
     }
 }

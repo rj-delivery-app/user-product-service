@@ -46,14 +46,32 @@ jwt:
   expiration: ${JWT_EXPIRATION:86400000}
 
 management:
+  metrics:
+    tags:
+      # This injects a global tag 'application="my-payment-service"' into every metric line
+      application: ${spring.application.name}
+  # 1. This exposes the endpoints to the web/HTTP engine
   endpoints:
     web:
-      exposure:
-        include: health,info
       base-path: /actuator
+      exposure:
+        include: ["health", "info", "prometheus", "metrics"]
+
+  # 2. This configures the behaviors of specific endpoints
   endpoint:
     health:
+      probes:
+        enabled: true
       show-details: always
+    prometheus:
+      enabled: true
+
+  # 3. This enables specific indicators inside the health groups
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
 
 logging:
   level:
@@ -77,3 +95,8 @@ springdoc:
 
 file:
   upload-dir: ${user.home}/test/resource
+
+sms:
+  service:
+    enabled: true
+    message-text: Hello world!!!

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Fall back to default Spring Boot console pattern properties -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml" />
+
+    <!-- 1. LOCAL CONSOLE APPENDER (Fixed class package string) -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+            <charset>utf8</charset>
+        </encoder>
+    </appender>
+
+    <!-- 2. LOKI APPENDER (Asynchronous HTTP Push) -->
+    <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
+        <!-- Target your local standalone Loki instance -->
+        <http>
+            <url>http://localhost:3100/loki/api/v1/push</url>
+        </http>
+        <format>
+            <!-- Define the static indexing labels for Grafana -->
+            <label>
+                <pattern>app=user-product-service,host=${HOSTNAME},level=%level</pattern>
+            </label>
+            <!-- Standard dynamic payload layout message format -->
+            <message class="com.github.loki4j.logback.JsonLayout">
+                <includeTimestamp>true</includeTimestamp>
+                <includeLoggerName>true</includeLoggerName>
+                <includeThreadName>true</includeThreadName>
+                <includeMdc>true</includeMdc>
+            </message>
+        </format>
+    </appender>
+
+    <!-- Root active logging definitions -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="LOKI" />
+    </root>
+</configuration>
