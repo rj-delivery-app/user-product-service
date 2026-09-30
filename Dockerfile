@@ -21,7 +21,6 @@ ARG SKIP_SONAR=true
 ARG SONAR_HOST_URL=https://sonarcloud.io
 ARG SONAR_ORG=rj-delivery-app
 ARG SONAR_PROJECT_KEY=user-product-service
-ARG SONAR_TOKEN="f21ed27f9c33c046a83a77a991c4d00c4f5960b0"
 
 # Copy application source.
 COPY src ./src
@@ -39,7 +38,7 @@ RUN if [ "$SKIP_SONAR" = "false" ] && [ -n "$SONAR_TOKEN" ]; then \
         -Dsonar.host.url=$SONAR_HOST_URL \
         -Dsonar.organization=$SONAR_ORG \
         -Dsonar.projectKey=$SONAR_PROJECT_KEY \
-        -Dsonar.token=$SONAR_TOKEN \
+        -Dsonar.token=$(cat /run/secrets/sonar_token) \
         -B --no-transfer-progress; \
     else \
       echo "Skipping SonarQube analysis (SKIP_SONAR=$SKIP_SONAR, SONAR_TOKEN set: $([ -n "$SONAR_TOKEN" ] && echo yes || echo no))"; \
