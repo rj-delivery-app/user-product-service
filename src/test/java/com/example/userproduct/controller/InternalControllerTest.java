@@ -13,8 +13,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
@@ -23,18 +23,24 @@ import java.util.Optional;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(InternalController.class) @AutoConfigureMockMvc @Import(SecurityConfig.class)
 @DisplayName("InternalController Tests")
 class InternalControllerTest {
 
     @Autowired private MockMvc mockMvc;
-    @MockBean private UserRepository userRepository;
-    @MockBean private ProductRepository productRepository;
-    @MockBean private AddressRepository addressRepository;
-    @MockBean private JwtUtil jwtUtil;
-    @MockBean private CustomUserDetailsService customUserDetailsService;
+    @MockitoBean
+    private UserRepository userRepository;
+    @MockitoBean
+    private ProductRepository productRepository;
+    @MockitoBean
+    private AddressRepository addressRepository;
+    @MockitoBean
+    private JwtUtil jwtUtil;
+    @MockitoBean
+    private CustomUserDetailsService customUserDetailsService;
 
     @Nested @DisplayName("GET /internal/users/{id}") class GetUserByIdTests {
         @Test @DisplayName("Returns user without authentication - 200")

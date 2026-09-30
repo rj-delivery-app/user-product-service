@@ -3,6 +3,7 @@ package com.example.userproduct.service;
 import com.example.userproduct.dao.ProductRepository;
 import com.example.userproduct.dao.UserRepository;
 import com.example.userproduct.dto.CreateProductRequest;
+import com.example.userproduct.dto.ImageHolder;
 import com.example.userproduct.dto.ProductResponse;
 import com.example.userproduct.dto.UpdateProductRequest;
 import com.example.userproduct.entities.Product;
@@ -16,11 +17,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -40,8 +47,12 @@ class ProductServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private ImageHolder imageHolder;
+
     @InjectMocks
     private ProductService productService;
+
 
     private User merchant;
     private User customer;
@@ -99,7 +110,16 @@ class ProductServiceTest {
 
         @Test
         @DisplayName("Merchant creates product successfully")
-        void createProduct_merchantCreates_success() {
+        void createProduct_merchantCreates_success() throws IOException {
+
+            MockMultipartFile mockFile = new MockMultipartFile(
+                    "file",
+                    "hello.txt",
+                    MediaType.TEXT_PLAIN_VALUE,
+                    "Hello, World!".getBytes()
+            );
+
+            when(imageHolder.getOriginalFileName()).thenReturn(mockFile.getOriginalFilename());
             when(userRepository.findById("merchant-1")).thenReturn(Optional.of(merchant));
             when(productRepository.save(any(Product.class))).thenAnswer(inv -> {
                 Product p = inv.getArgument(0);

@@ -1,10 +1,14 @@
 package com.example.userproduct.config;
 
+import jakarta.annotation.PostConstruct;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.support.GenericApplicationContext;
+import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
@@ -21,6 +25,12 @@ import java.util.Map;
 @Configuration
 public class KafkaProducerConfig {
 
+    private final GenericApplicationContext context;
+
+    public KafkaProducerConfig(GenericApplicationContext context) {
+        this.context = context;
+    }
+
     @Bean
     public ProducerFactory<String, String> producerFactory(
             @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers) {
@@ -34,5 +44,30 @@ public class KafkaProducerConfig {
     @Bean
     public KafkaTemplate<String, String> kafkaTemplate(ProducerFactory<String, String> pf) {
         return new KafkaTemplate<>(pf);
+    }
+
+    @PostConstruct
+    public void initializeTopics() {
+        // Define your topics and partition counts
+        String[] topics = {
+                "user.events",
+                "product.events",
+                "order.events",
+                "user-sync-request",
+                "user.cache-miss"
+        };
+
+        int partitions = 3;
+        short replicationFactor = 1; // Tailored for your single-pod Kubernetes Kafka broker
+
+        // Programmatically register each topic bean into the Spring Lifecycle context
+        for (String topicName : topics) {
+            context.registerBean(topicName, NewTopic.class, () ->
+                    TopicBuilder.name(topicName)
+                            .partitions(partitions)
+                            .replicas(replicationFactor)
+                            .build()
+            );
+        }
     }
 }

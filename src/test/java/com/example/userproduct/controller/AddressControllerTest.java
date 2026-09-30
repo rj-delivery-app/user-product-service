@@ -15,11 +15,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
@@ -30,17 +30,22 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AddressController.class) @AutoConfigureMockMvc @Import(SecurityConfig.class)
 class AddressControllerTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
-    @MockBean private AddressService addressService;
-    @MockBean private UserContextService userContextService;
-    @MockBean private JwtUtil jwtUtil;
-    @MockBean private CustomUserDetailsService customUserDetailsService;
+    @MockitoBean
+    private AddressService addressService;
+    @MockitoBean
+    private UserContextService userContextService;
+    @MockitoBean
+    private JwtUtil jwtUtil;
+    @MockitoBean
+    private CustomUserDetailsService customUserDetailsService;
 
     private UsernamePasswordAuthenticationToken authAs(String role) {
         return new UsernamePasswordAuthenticationToken("user@example.com", null,

@@ -3,7 +3,7 @@
 # Why: Separate build environment keeps the final image lean by excluding the
 #      JDK, Maven cache, and source code from the runtime layer.
 # =============================================================================
-FROM eclipse-temurin:17-jdk AS builder
+FROM eclipse-temurin:21-jdk-alpine AS builder
 
 WORKDIR /app
 
@@ -18,8 +18,10 @@ RUN chmod +x mvnw && ./mvnw dependency:go-offline -B --no-transfer-progress
 # Build arguments
 ARG SKIP_TESTS=true
 ARG SKIP_SONAR=true
-ARG SONAR_HOST_URL=http://host.docker.internal:9000
-ARG SONAR_TOKEN=""
+ARG SONAR_HOST_URL=https://sonarcloud.io
+ARG SONAR_ORG=rj-delivery-app
+ARG SONAR_PROJECT_KEY=user-product-service
+ARG SONAR_TOKEN="f21ed27f9c33c046a83a77a991c4d00c4f5960b0"
 
 # Copy application source.
 COPY src ./src
@@ -35,6 +37,8 @@ RUN if [ "$SKIP_TESTS" = "true" ]; then \
 RUN if [ "$SKIP_SONAR" = "false" ] && [ -n "$SONAR_TOKEN" ]; then \
       ./mvnw sonar:sonar \
         -Dsonar.host.url=$SONAR_HOST_URL \
+        -Dsonar.organization=$SONAR_ORG \
+        -Dsonar.projectKey=$SONAR_PROJECT_KEY \
         -Dsonar.token=$SONAR_TOKEN \
         -B --no-transfer-progress; \
     else \
@@ -45,9 +49,9 @@ RUN if [ "$SKIP_SONAR" = "false" ] && [ -n "$SONAR_TOKEN" ]; then \
 # Stage 2: Runtime
 # Why: eclipse-temurin JRE Alpine is ~100 MB vs ~350 MB for the full JDK image.
 # =============================================================================
-FROM eclipse-temurin:17-jre AS runtime
+FROM eclipse-temurin:21-jdk-alpine AS runtime
 
-RUN groupadd -r appgroup && useradd -r -g appgroup appuser
+RUN addgroup -S appgroup && adduser -S -G appgroup appuser
 
 WORKDIR /app
 

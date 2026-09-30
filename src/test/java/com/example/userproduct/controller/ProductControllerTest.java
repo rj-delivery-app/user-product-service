@@ -1,7 +1,5 @@
 package com.example.userproduct.controller;
 
-import com.example.userproduct.dao.ProductRepository;
-import com.example.userproduct.dao.UserRepository;
 import com.example.userproduct.dto.CreateProductRequest;
 import com.example.userproduct.dto.ImageHolder;
 import com.example.userproduct.dto.ProductResponse;
@@ -19,15 +17,16 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
@@ -40,19 +39,26 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(ProductController.class) @AutoConfigureMockMvc @Import(SecurityConfig.class)
 class ProductControllerTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
-    @MockBean private ProductService productService;
-    @MockBean private UserContextService userContextService;
-    @MockBean private JwtUtil jwtUtil;
-    @MockBean private CustomUserDetailsService customUserDetailsService;
-    @MockBean private ImageHolder imageHolder;
-    @MockBean private FileService fileService;
+    @MockitoBean
+    private ProductService productService;
+    @MockitoBean
+    private UserContextService userContextService;
+    @MockitoBean
+    private JwtUtil jwtUtil;
+    @MockitoBean
+    private CustomUserDetailsService customUserDetailsService;
+    @MockitoBean
+    private ImageHolder imageHolder;
+    @MockitoBean
+    private FileService fileService;
 
     private UsernamePasswordAuthenticationToken authAs(String role) {
         return new UsernamePasswordAuthenticationToken("user@example.com", null,
@@ -68,7 +74,18 @@ class ProductControllerTest {
     @Nested @DisplayName("POST /api/products") class CreateProductTests {
         @Test @DisplayName("MERCHANT_ADMIN creates product - 201")
         void createProduct_merchantAdmin_returns201() throws Exception {
+
+            MockMultipartFile mockFile = new MockMultipartFile(
+                    "file",
+                    "hello.txt",
+                    MediaType.TEXT_PLAIN_VALUE,
+                    "Hello, World!".getBytes()
+            );
+
             MockHttpSession session = new MockHttpSession();
+            when(imageHolder.getFileBytes()).thenReturn(mockFile.getBytes());
+            when(imageHolder.getOriginalFileName()).thenReturn(mockFile.getOriginalFilename());
+            when(imageHolder.getContentType()).thenReturn(mockFile.getContentType());
             CreateProductRequest request = CreateProductRequest.builder().name("Margherita Pizza")
                     .description("Classic pizza").price(new BigDecimal("12.99")).category("Pizza").build();
             when(userContextService.getCurrentUserId()).thenReturn("merchant-1");

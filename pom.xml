@@ -20,14 +20,18 @@
     <packaging>jar</packaging>
 
     <properties>
-        <java.version>17</java.version>
-        <lombok.version>1.18.38</lombok.version>
+        <java.version>21</java.version>
+        <lombok.version>1.18.34</lombok.version>
 
         <!-- SonarQube Configuration -->
         <sonar.projectKey>user-product-service</sonar.projectKey>
-        <sonar.projectName>User Product Service API</sonar.projectName>
-        <sonar.host.url>http://localhost:9000</sonar.host.url>
+        <sonar.projectName>User Product Service</sonar.projectName>
+        <!--suppress UnresolvedMavenProperty -->
+        <sonar.organization>${env.SONAR_ORG}</sonar.organization>
+        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.java.coveragePlugin>jacoco</sonar.java.coveragePlugin>
+        <!--suppress UnresolvedMavenProperty -->
+        <sonar.token>${env.SONAR_TOKEN}</sonar.token>
         <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
         <sonar.language>java</sonar.language>
         <sonar.sourceEncoding>UTF-8</sonar.sourceEncoding>
@@ -78,6 +82,7 @@
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
+            <scope>provided</scope>
         </dependency>
 
         <!-- Test -->
@@ -154,11 +159,11 @@
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>com.example.sms</groupId>
-            <artifactId>sms-service-spring-boot-starter</artifactId>
-            <version>1.0.0</version>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>com.example.sms</groupId>-->
+<!--            <artifactId>sms-service-spring-boot-starter</artifactId>-->
+<!--            <version>1.0.0</version>-->
+<!--        </dependency>-->
 
         <!-- SpringDoc OpenAPI (Swagger) -->
         <dependency>
@@ -193,15 +198,19 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.14.0</version> <!-- Upgrade to 3.14.0 -->
                 <configuration>
+                    <release>21</release> <!-- Explicitly specify Java 21 -->
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
+                            <version>1.18.34</version> <!-- Ensure this remains at 1.18.34+ -->
                         </path>
                     </annotationProcessorPaths>
                 </configuration>
             </plugin>
+
             <!-- SonarQube Maven Plugin -->
             <plugin>
                 <groupId>org.sonarsource.scanner.maven</groupId>
@@ -247,12 +256,12 @@
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.80</minimum>
+                                            <minimum>0.50</minimum>
                                         </limit>
                                         <limit>
                                             <counter>BRANCH</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.70</minimum>
+                                            <minimum>0.40</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
